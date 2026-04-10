@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <EditText
+            android:id="@+id/etName"
+            android:hint="Recipe Name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/etIngredients"
+            android:hint="Ingredients"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/etSteps"
+            android:hint="Steps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/btnAdd"
+            android:text="Add Recipe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/btnView"
+            android:text="View Recipes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <ListView
+            android:id="@+id/listView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
+</ScrollView>  
+this is for xml file
+
+
+package com.example.recipeapp;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Bundle;
+import android.widget.*;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    EditText etName, etIngredients, etSteps;
+    Button btnAdd, btnView;
+    ListView listView;
+
+    DBHelper db;
+    ArrayAdapter<String> adapter;
+    String[] recipeList;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        etName = findViewById(R.id.etName);
+        etIngredients = findViewById(R.id.etIngredients);
+        etSteps = findViewById(R.id.etSteps);
+        btnAdd = findViewById(R.id.btnAdd);
+        btnView = findViewById(R.id.btnView);
+        listView = findViewById(R.id.listView);
+
+        db = new DBHelper(this);
+
+        // Add Recipe
+        btnAdd.setOnClickListener(v -> {
+            String name = etName.getText().toString();
+            String ing = etIngredients.getText().toString();
+            String steps = etSteps.getText().toString();
+
+            if (db.insertRecipe(name, ing, steps)) {
+                Toast.makeText(this, "Recipe Added", Toast.LENGTH_SHORT).show();
+                clearFields();
+            } else {
+                Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // View Recipes
+        btnView.setOnClickListener(v -> showRecipes());
+    }
+
+    private void showRecipes() {
+        Cursor cursor = db.getRecipes();
+
+        if (cursor.getCount() == 0) {
+            Toast.makeText(this, "No Recipes Found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        recipeList = new String[cursor.getCount()];
+        int i = 0;
+
+        while (cursor.moveToNext()) {
+            recipeList[i] =
+                    "Name: " + cursor.getString(1) + "\n" +
+                            "Ingredients: " + cursor.getString(2) + "\n" +
+                            "Steps: " + cursor.getString(3);
+            i++;
+        }
+
+        adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_1, recipeList);
+
+        listView.setAdapter(adapter);
+    }
+
+    private void clearFields() {
+        etName.setText("");
+        etIngredients.setText("");
+        etSteps.setText("");
+    }
+
+    public static class DBHelper extends SQLiteOpenHelper {
+
+        private static final String DB_NAME = "RecipeDB";
+        private static final int DB_VERSION = 1;
+
+        public DBHelper(Context context) {
+            super(context, DB_NAME, null, DB_VERSION);
+        }
+
+        @Override
+        public void onCreate(SQLiteDatabase db) {
+            String query = "CREATE TABLE recipes (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "name TEXT, " +
+                    "ingredients TEXT, " +
+                    "steps TEXT)";
+            db.execSQL(query);
+        }
+
+        @Override
+        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+            db.execSQL("DROP TABLE IF EXISTS recipes");
+            onCreate(db);
+        }
+
+        // Insert Recipe
+        public boolean insertRecipe(String name, String ingredients, String steps) {
+            SQLiteDatabase db = this.getWritableDatabase();
+            ContentValues cv = new ContentValues();
+
+            cv.put("name", name);
+            cv.put("ingredients", ingredients);
+            cv.put("steps", steps);
+
+            long result = db.insert("recipes", null, cv);
+            return result != -1;
+        }
+
+        // Get All Recipes
+        public Cursor getRecipes() {
+            SQLiteDatabase db = this.getReadableDatabase();
+            return db.rawQuery("SELECT * FROM recipes", null);
+        }
+    }
+}
+this is main_activity.java file
+
+
+
+package com.example.recipeapp;
+
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.content.ContentValues;
+import android.database.Cursor;
+
+public class DBHelper extends SQLiteOpenHelper {
+
+    private static final String DB_NAME = "RecipeDB";
+    private static final int DB_VERSION = 1;
+
+    public DBHelper(Context context) {
+        super(context, DB_NAME, null, DB_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        String query = "CREATE TABLE recipes (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "name TEXT, " +
+                "ingredients TEXT, " +
+                "steps TEXT)";
+        db.execSQL(query);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS recipes");
+        onCreate(db);
+    }
+
+    // Insert Recipe
+    public boolean insertRecipe(String name, String ingredients, String steps) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+
+        cv.put("name", name);
+        cv.put("ingredients", ingredients);
+        cv.put("steps", steps);
+
+        long result = db.insert("recipes", null, cv);
+        return result != -1;
+    }
+
+    // Get All Recipes
+    public Cursor getRecipes() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.rawQuery("SELECT * FROM recipes", null);
+    }
+}
+this is DBhelper file
